@@ -4,23 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public class Market {
-    private final String name;
-    private final List<Runner> runners;
-
+public record Market(String name, List<Runner> runners) {
     public Market(
-            @JsonProperty String name,
-            @JsonProperty List<Runner> runners
+            @JsonProperty("name") String name,
+            @JsonProperty("runners") List<Runner> runners
     ) {
         this.name = name;
         this.runners = runners;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public List<Runner> getRunners() {
-        return runners;
     }
 }
