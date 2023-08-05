@@ -25,38 +25,26 @@ public class App {
         HttpClient client = HttpClient.newHttpClient();
 
         List<Sport> sportList = fromJson(getAsync(client, SPORT_URI).join().body(), new TypeReference<>() {});
-        List<Sport.League> topLeagues = sportList.stream()
-                .flatMap(sport -> sport.regions().stream())
-                .flatMap(region -> region.leagues().stream())
-                .filter(Sport.League::top)
-                .toList();
+        List<Sport.League> topLeagues = sportList.stream().flatMap(sport -> sport.topLeagues().stream()).toList();
 
-        Map<String, List<League.Match>> matches = new ConcurrentHashMap<>();
+        Map<String, Match> matches = new ConcurrentHashMap<>();
 
         for (Sport.League league : topLeagues) {
             CompletableFuture.allOf(getAsync(client, String.format(LEAGUE_URI_TEMPLATE, league.id()))
                     .thenApply(HttpResponse::body)
                     .thenApply(json -> fromJson(json, new TypeReference<League>() {}))
-                    .thenApply(League::matches)
-                    .thenApply(list -> matches.put(league.id(), list))).join();
-        }
-
-        Map<String, List<Match.Market>> markets = new ConcurrentHashMap<>();
-
-        for (League.Match match : matches.values().stream().flatMap(List::stream).toList()) {
-            CompletableFuture.allOf(getAsync(client, String.format(MATCH_URI_TEMPLATE, match.id()))
+                    .thenApply(League::matchId)
+                    .thenComposeAsync(matchId -> getAsync(client, String.format(MATCH_URI_TEMPLATE, matchId)))
                     .thenApply(HttpResponse::body)
-                    .thenApply(json -> fromJson(json, new TypeReference<Match>() {}))
-                    .thenApply(Match::markets)
-                    .thenApply(list -> markets.put(match.id(), list))).join();
+                    .thenApply(json -> fromJson(json, new TypeReference<Match> () {}))
+                    .thenApply(match -> matches.put(league.id(), match))).join();
         }
+
+        System.out.println(matches);
     }
 
     private static CompletableFuture<HttpResponse<String>> getAsync(HttpClient client, String uri) {
-        HttpRequest request = HttpRequest
-                .newBuilder(URI.create(uri))
-                .header("accept", "application/json")
-                .build();
+        HttpRequest request = HttpRequest.newBuilder(URI.create(uri)).build();
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString());
     }
