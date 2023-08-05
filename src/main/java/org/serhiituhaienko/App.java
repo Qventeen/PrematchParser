@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.lang.System.out;
+
 public class App {
     private static final String SPORT_URI = "https://leonbets.com/api-2/betline/sports?ctag=en-US&flags=urlv2";
     private static final String LEAGUE_URI_TEMPLATE = "https://leonbets.com/api-2/betline/events/all?ctag=en-US&league_id=%s&hideClosed=true&flags=reg,urlv2,mm2,rrc,nodup";
@@ -40,7 +42,7 @@ public class App {
                     .thenApply(match -> matches.put(league.id(), match))).join();
         }
 
-        System.out.println(matches);
+        printOutput(sportList, matches);
     }
 
     private static CompletableFuture<HttpResponse<String>> getAsync(HttpClient client, String uri) {
@@ -60,5 +62,22 @@ public class App {
         }
 
         return result;
+    }
+
+    public static void printOutput(List<Sport> sports, Map<String, Match> matches) {
+        var space = ' ';
+        for (var sport: sports) {
+            for (var league: sport.topLeagues()) {
+                out.printf("%s, %s %s%n", sport.name(), league.regionName(), league.name());
+                var match = matches.get(league.id());
+                out.printf("%5s%s, %s, %s%n", space, match.name(), match.startTime(), match.id());
+                for (var market : match.markets()) {
+                    out.printf("%10s%s%n", space, market.name());
+                    for (var runner : market.runners()) {
+                        out.printf("%15s%s, %s, %s%n", space, runner.name(), runner.price(), runner.id());
+                    }
+                }
+            }
+        }
     }
 }
